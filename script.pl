@@ -3,7 +3,10 @@
 use strict;
 use warnings;
 
+use Archive::Tar;
 use Digest::SHA;
+use JSON;
+use LWP::UserAgent;
 
 __PACKAGE__->main;
 exit;
@@ -13,7 +16,7 @@ sub main {
     my $directory;
     my $url;
 
-     if (@ARGV <= 1) {
+    if (@ARGV <= 1) {
         print STDERR "ERROR: Must be ran as the following:\n";
         print "./script.pl DIRECTORY URL\n";
         print "Example: ./script.pl ~/Code/ http://pastebin.com\n";
@@ -25,6 +28,8 @@ sub main {
 
     my @files = $self->read_directory($directory, $url);
     $self->write_tar(@files);
+    $self->send_tar($url);
+
 }
 
 sub read_directory {
@@ -72,4 +77,22 @@ sub write_tar {
     }
 
     $tar->write('archive.tar.gz', COMPRESS_GZIP);
+}
+
+sub send_tar {
+    my ($self, $url) = @_;
+    my $ua   = LWP::UserAgent->new;
+    my $gz   = "./archive.tar.gz";
+
+    my $req = $ua->post($url,
+        Content_Type => 'multipart/form-data',
+        Content      => [ arc_file  => [ $gz ] ],
+    );
+
+    if ($req->is_success) {
+        my $message = $req->decoded_content;
+        print "$url response: $message\n";
+    } else {
+        print STDERR "$url ERROR:", $req->code, ", ", $req->message, "\n";
+    }
 }
