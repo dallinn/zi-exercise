@@ -24,7 +24,7 @@ sub main {
     }
 
     my @files = $self->read_directory($directory, $url);
-    die @files;
+    $self->write_tar(@files);
 }
 
 sub read_directory {
@@ -57,4 +57,19 @@ sub read_directory {
     closedir(DIR);
 
     return @files; 
+}
+
+sub write_tar {
+    my ($self, @files) = @_;
+    my $tar = Archive::Tar->new();
+
+    my $json = to_json(\@files);
+    $tar->add_data('manifest.json', $json);
+
+    foreach (@files) {
+        my ($ext) = $_->{path} =~ /(\.[^.]+)$/; # last '.xxx' in full path
+        $tar->add_data("$_->{id}$ext", $_->{path});
+    }
+
+    $tar->write('archive.tar.gz', COMPRESS_GZIP);
 }
